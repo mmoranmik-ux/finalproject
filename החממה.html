@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+  <meta charset="UTF-8">
+  <title>חידון החממה — רמות קושי מתקדמות</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f0f8ff;
+      direction: rtl;
+      padding: 20px;
+    }
+    #levelSelection, #quizContainer {
+      margin-top: 20px;
+    }
+    button {
+      padding: 10px 25px;
+      margin: 10px;
+      font-size: 17px;
+      cursor: pointer;
+    }
+    .feedback {
+      margin-top: 15px;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    #results {
+      font-size: 21px;
+      font-weight: bold;
+      margin-top: 25px;
+    }
+    #levelDisplay {
+      font-size: 20px;
+      font-weight: bold;
+      color: #ff4500;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>✨ חידון החממה — בחר רמת קושי ✨</h1>
+<p>כמה אתה אוהד שרוף של הסדרה? בחר את רמת הקושי!</p>
+
+<div id="levelSelection">
+  <button data-level="קל">קל</button>
+  <button data-level="בינוני">בינוני</button>
+  <button data-level="קשה">קשה</button>
+  <button data-level="מטורפת">מטורפת</button>
+</div>
+
+<div id="quizContainer" style="display:none;">
+  <div id="levelDisplay"></div>
+  <p id="question"></p>
+  <div id="answers"></div>
+  <p class="feedback" id="feedback"></p>
+  <button id="nextBtn" style="display:none;">שאלה הבאה</button>
+</div>
+
+<p id="results"></p>
+
+<script>
+const levelButtons = document.querySelectorAll('#levelSelection button');
+const quizContainer = document.getElementById('quizContainer');
+const levelDisplay = document.getElementById('levelDisplay');
+const questionEl = document.getElementById('question');
+const answersEl = document.getElementById('answers');
+const feedbackEl = document.getElementById('feedback');
+const nextBtn = document.getElementById('nextBtn');
+const resultsEl = document.getElementById('results');
+
+let currentQuestion = 0;
+let score = 0;
+let selectedLevel = '';
+let questionsToUse = [];
+
+// 🟢 שאלות לפי רמה
+const allQuestions = [
+  // רמת קל — שמות דמויות ופרטים בסיסיים
+  { text:"איך נקראים האחים שמגיעים לחממה?", answers:[{text:"אלה‑לי ואלפי",correct:true},{text:"דינה ונטלי",correct:false},{text:"יפתח ומתי",correct:false}], level:"קל"},
+  { text:"באיזה בית שייכת נטלי?", answers:[{text:"העורבים",correct:true},{text:"הנשרים",correct:false},{text:"הדולפינים",correct:false}], level:"קל"},
+  { text:"מי מנהיגת קבוצת הנשרים בעונה הראשונה?", answers:[{text:"סופי",correct:true},{text:"אלפי",correct:false},{text:"רון",correct:false}], level:"קל"},
+  { text:"איזו קבוצה מתמודדת מול העורבים?", answers:[{text:"הנשרים",correct:true},{text:"הדולפינים",correct:false},{text:"השועלים",correct:false}], level:"קל"},
+  { text:"החממה היא:", answers:[{text:"בית ספר פנימייתי",correct:true},{text:"מוזיאון",correct:false},{text:"חנות ספרים",correct:false}], level:"קל"},
+  { text:"מי מהדמויות החזיקו בסוד של החדר הסודי?", answers:[{text:"אלה‑לי ויפתח",correct:true},{text:"רון ואלפי",correct:false},{text:"סופי ודינה",correct:false}], level:"קל"},
+  { text:"מי מהדמויות החזיקה בתיק עם מסמכים חשובים?", answers:[{text:"נעמי",correct:true},{text:"רון",correct:false},{text:"אלפי",correct:false}], level:"קל"},
+  { text:"מי מהדמויות היא חכמה במיוחד בפתרון חידות?", answers:[{text:"אלה‑לי",correct:true},{text:"דניאל",correct:false},{text:"סופי",correct:false}], level:"קל"},
+  { text:"מי צחק הכי הרבה בסצנת המסיבה הסודית?", answers:[{text:"דניאל",correct:true},{text:"רון",correct:false},{text:"אלפי",correct:false}], level:"קל"},
+  { text:"מי נחשב למנהיג הראשי של העורבים?", answers:[{text:"אלפי",correct:true},{text:"נעמי",correct:false},{text:"סופי",correct:false}], level:"קל"},
+  { text:"מי מבין הדמויות אוהב לעשות ניסויים?", answers:[{text:"אלה‑לי",correct:true},{text:"רון",correct:false},{text:"דינה",correct:false}], level:"קל"},
+  { text:"מי היה הראשון לגלות את המזימה?", answers:[{text:"יפתח",correct:true},{text:"דניאל",correct:false},{text:"אלפי",correct:false}], level:"קל"},
+  { text:"מי מתגלה כאדם אמיץ מול קשיים?", answers:[{text:"רון",correct:true},{text:"סופי",correct:false},{text:"נעמי",correct:false}], level:"קל"},
+  { text:"מי החזיק במידע סודי על העונה השנייה?", answers:[{text:"דינה",correct:true},{text:"אלה‑לי",correct:false},{text:"נעמי",correct:false}], level:"קל"},
+  { text:"מי מהדמויות הצחיקה את כולם לעיתים קרובות?", answers:[{text:"דניאל",correct:true},{text:"רון",correct:false},{text:"אלפי",correct:false}], level:"קל"},
+
+  // רמת בינוני — מערכות יחסים ואירועים בולטים
+  { text:"מי מהדמויות יצא בקשר רומנטי עם דניאל?", answers:[{text:"נטלי",correct:true},{text:"אלה‑לי",correct:false},{text:"רון",correct:false}], level:"בינוני"},
+  { text:"מי הציל את נעמי מסיטואציה מסוכנת בעונה השנייה?", answers:[{text:"אלפי",correct:true},{text:"סופי",correct:false},{text:"רון",correct:false}], level:"בינוני"},
+  { text:"מי מצטרף לחבורה המרכזית בעונה השנייה?", answers:[{text:"זאב",correct:true},{text:"דינה",correct:false},{text:"אלפי",correct:false}], level:"בינוני"},
+  { text:"מי היה אחראי על תחרויות הספורט?", answers:[{text:"רון",correct:true},{text:"נעמי",correct:false},{text:"אלה‑לי",correct:false}], level:"בינוני"},
+  { text:"מי הראשון לגלות את החדר הסודי?", answers:[{text:"אלה‑לי",correct:true},{text:"דינה",correct:false},{text:"סופי",correct:false}], level:"בינוני"},
+  { text:"מי עוזר ליפתח להבין את המזימה?", answers:[{text:"דניאל",correct:true},{text:"רון",correct:false},{text:"אלפי",correct:false}], level:"בינוני"},
+  { text:"מי גרם לתחרות להיות מורכבת יותר?", answers:[{text:"זאב",correct:true},{text:"נעמי",correct:false},{text:"סופי",correct:false}], level:"בינוני"},
+  { text:"מי נאלץ להתמודד עם פחדים אישיים במהלך החידות?", answers:[{text:"סופי",correct:true},{text:"דניאל",correct:false},{text:"רון",correct:false}], level:"בינוני"},
+  { text:"מי מסייע לחשוף את המזימה הסודית?", answers:[{text:"אלפי ואלה‑לי",correct:true},{text:"דינה בלבד",correct:false},{text:"רון בלבד",correct:false}], level:"בינוני"},
+  { text:"מי מחליט לקחת סיכון כדי להציל חבר?", answers:[{text:"נעמי",correct:true},{text:"זאב",correct:false},{text:"סופי",correct:false}], level:"בינוני"},
+  { text:"מי מנהיג את צוות המחקר?", answers:[{text:"אלה‑לי",correct:true},{text:"דינה",correct:false},{text:"רון",correct:false}], level:"בינוני"},
+  { text:"מי מורה לחברים על תעלומות החממה?", answers:[{text:"נעמי",correct:true},{text:"אלפי",correct:false},{text:"סופי",correct:false}], level:"בינוני"},
+  { text:"מי מהדמויות מתמודד עם אכזבות רומנטיות?", answers:[{text:"דניאל",correct:true},{text:"רון",correct:false},{text:"אלה‑לי",correct:false}], level:"בינוני"},
+  { text:"מי מבצע חקירה על סודות החממה?", answers:[{text:"אלה‑לי",correct:true},{text:"דינה",correct:false},{text:"סופי",correct:false}], level:"בינוני"},
+
+  // רמת קשה — קונפליקטים ומזימות
+  { text:"מי מגלה את המזימה בחממה?", answers:[{text:"החבורה המרכזית",correct:true},{text:"רון בלבד",correct:false},{text:"סופי בלבד",correct:false}], level:"קשה"},
+  { text:"מי נאלצים לעבוד יחד לעצירת המזימה?", answers:[{text:"העורבים והנשרים",correct:true},{text:"רון ואלפי",correct:false},{text:"דינה ונעמי",correct:false}], level:"קשה"},
+  { text:"מי עומד בפני החלטות קשות להצלת החברים?", answers:[{text:"אלפי",correct:true},{text:"סופי",correct:false},{text:"רון",correct:false}], level:"קשה"},
+  { text:"מי מנסה להפיץ מזימה בעונה השנייה?", answers:[{text:"הלקוח / Client",correct:true},{text:"דינה",correct:false},{text:"נעמי",correct:false}], level:"קשה"},
+  { text:"מי מגלה את חדר הסודי בעיתוי קריטי?", answers:[{text:"אלה‑לי",correct:true},{text:"דניאל",correct:false},{text:"סופי",correct:false}], level:"קשה"},
+  { text:"מי חושף סודות קריטיים על צוות החממה?", answers:[{text:"זאב",correct:true},{text:"רון",correct:false},{text:"נעמי",correct:false}], level:"קשה"},
+  { text:"מי משמש כמתווך בין קבוצות מתחרות?", answers:[{text:"דניאל",correct:true},{text:"סופי",correct:false},{text:"אלפי",correct:false}], level:"קשה"},
+  { text:"מי מסייע בהגנת החממה מפני סכנה חיצונית?", answers:[{text:"אלה‑לי",correct:true},{text:"רון",correct:false},{text:"דינה",correct:false}], level:"קשה"},
+  { text:"מי נאלץ לחשוף מידע סודי כדי להציל חבר?", answers:[{text:"סופי",correct:true},{text:"אלפי",correct:false},{text:"דניאל",correct:false}], level:"קשה"},
+  { text:"מי מתמודד מול סיכונים כדי למנוע אסון?", answers:[{text:"אלפי ואלה‑לי",correct:true},{text:"רון בלבד",correct:false},{text:"נעמי בלבד",correct:false}], level:"קשה"},
+  { text:"מי נלחם מול אויב בלתי צפוי?", answers:[{text:"זאב",correct:true},{text:"דינה",correct:false},{text:"רון",correct:false}], level:"קשה"},
+  { text:"מי לוקח אחריות על מזימות החממה?", answers:[{text:"אלה‑לי",correct:true},{text:"סופי",correct:false},{text:"דניאל",correct:false}], level:"קשה"},
+  { text:"מי מהדמויות מוביל משימות מורכבות?", answers:[{text:"דניאל",correct:true},{text:"רון",correct:false},{text:"אלפי",correct:false}], level:"קשה"},
+  { text:"מי עומד מול אתגרים מסוכנים בחממה?", answers:[{text:"סופי",correct:true},{text:"נעמי",correct:false},{text:"אלה‑לי",correct:false}], level:"קשה"},
+  { text:"מי מהדמויות מסיים את העונה עם ידע על כל המזימות?", answers:[{text:"אלה‑לי",correct:true},{text:"דניאל",correct:false},{text:"רון",correct:false}], level:"קשה"},
+
+  // רמת מטורפת — פרטים נדירים וסצנות ספציפיות
+  { text:"מי התחזה לספי בעונה השלישית?", answers:[{text:"זאב",correct:true},{text:"דניאל",correct:false},{text:"רון",correct:false}], level:"מטורפת"},
+  { text:"מי ניסה לגרום לאסון עם פצצת Icarus?", answers:[{text:"זאב",correct:true},{text:"אלפי",correct:false},{text:"נעמי",correct:false}], level:"מטורפת"},
+  { text:"מי נשאר לבדו עם מידע קריטי בפרק האחרון?", answers:[{text:"אלה‑לי",correct:true},{text:"רון",correct:false},{text:"דניאל",correct:false}], level:"מטורפת"},
+  { text:"מי הציל את אלה‑לי מהפצצה בסיום הסדרה?", answers:[{text:"עצמה של אלה‑לי",correct:true},{text:"נעמי",correct:false},{text:"מרקוס",correct:false}], level:"מטורפת"},
+  { text:"מי נוטל אחריות על כישלון המשימה?", answers:[{text:"זאב",correct:true},{text:"סופי",correct:false},{text:"אלפי",correct:false}], level:"מטורפת"},
+  { text:"מי עוזר להפעיל את מערכת ההצלה בסצנה קריטית?", answers:[{text:"דניאל",correct:true},{text:"רון",correct:false},{text:"אלה‑לי",correct:false}], level:"מטורפת"},
+  { text:"מי מגלה את סוד המעבדה בסוף העונה השנייה?", answers:[{text:"אלה‑לי",correct:true},{text:"דינה",correct:false},{text:"סופי",correct:false}], level:"מטורפת"},
+  { text:"מי הצליח להימלט מהחדר הסודי בזמן האחרון?", answers:[{text:"זאב",correct:true},{text:"רון",correct:false},{text:"דניאל",correct:false}], level:"מטורפת"},
+  { text:"מי נלחם מול אויב מסתורי בסוף העונה?", answers:[{text:"אלה‑לי",correct:true},{text:"סופי",correct:false},{text:"נעמי",correct:false}], level:"מטורפת"},
+  { text:"מי היה אחראי על פריצה למערכת ההגנה של החממה?", answers:[{text:"דניאל",correct:true},{text:"זאב",correct:false},{text:"רון",correct:false}], level:"מטורפת"},
+  { text:"מי חשף מזימה כפולה בפרק סודי?", answers:[{text:"אלה‑לי",correct:true},{text:"סופי",correct:false},{text:"דינה",correct:false}], level:"מטורפת"},
+  { text:"מי מהדמויות סיים עם הידע המלא על כל החממה?", answers:[{text:"אלה‑לי",correct:true},{text:"רון",correct:false},{text:"דניאל",correct:false}], level:"מטורפת"},
+  { text:"מי השתמש ברמזים מהפרק הראשון כדי לפתור את הסוד?", answers:[{text:"אלפי",correct:true},{text:"זאב",correct:false},{text:"דינה",correct:false}], level:"מטורפת"},
+  { text:"מי הצליח למנוע את האסון הסופי בסדרה?", answers:[{text:"אלה‑לי",correct:true},{text:"דניאל",correct:false},{text:"רון",correct:false}], level:"מטורפת"}
+];
+
+levelButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    selectedLevel = btn.getAttribute('data-level');
+    questionsToUse = allQuestions.filter(q => q.level === selectedLevel);
+    document.getElementById('levelSelection').style.display = 'none';
+    quizContainer.style.display = 'block';
+    currentQuestion = 0;
+    score = 0;
+    showQuestion();
+  });
+});
+
+function showQuestion() {
+  feedbackEl.textContent = '';
+  nextBtn.style.display = 'none';
+
+  if (currentQuestion < questionsToUse.length) {
+    const q = questionsToUse[currentQuestion];
+    levelDisplay.textContent = `רמת קושי: ${q.level}`;
+    questionEl.textContent = q.text;
+    answersEl.innerHTML = '';
+    q.answers.forEach(ans => {
+      const btn = document.createElement('button');
+      btn.textContent = ans.text;
+      btn.addEventListener('click', () => checkAnswer(ans));
+      answersEl.appendChild(btn);
+    });
+  } else {
+    showResults();
+  }
+}
+
+function checkAnswer(answer) {
+  if (answer.correct) {
+    score++;
+    feedbackEl.textContent = "🔥 נכון! אוהד החממה האמיתי!";
+  } else {
+    feedbackEl.textContent = "😅 לא בדיוק… אבל תנסה את הבאה!";
+  }
+  nextBtn.style.display = 'inline';
+}
+
+nextBtn.addEventListener('click', () => {
+  currentQuestion++;
+  showQuestion();
+});
+
+function showResults() {
+  quizContainer.style.display = 'none';
+  resultsEl.textContent = `🎉 סיימת! נקודות: ${score} מתוך ${questionsToUse.length}. תודה שהשתתפת בחידון החממה!`;
+}
+</script>
+
+</body>
+</html>
